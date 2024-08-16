@@ -1,4 +1,6 @@
+import { Contact } from '@prisma/client';
 import prisma from '../prisma/client';
+import * as db from '../prisma/client'
 
 export const getAllContacts = async () => {
     return await prisma.contact.findMany();
@@ -9,43 +11,51 @@ export const deleteAllContacts = async () => {
 };
 
 export const identifyContact = async (email: string, phoneNumber: string) => {
-    const duplicateContact = await findDuplicateContact(email, phoneNumber);
-    if (duplicateContact) {
-        const primaryContact = duplicateContact.linkedId
-            ? await getContactById(duplicateContact.linkedId)
-            : duplicateContact
+    // case 1: New Primary Creation
+    // condition: no duplicate contact, no linked contact
 
-        if (primaryContact?.email && primaryContact.phoneNumber) {
-            const existingContacts = await findLinkedContacts(primaryContact.email, primaryContact.phoneNumber);
-            const { existingEmails, existingPhoneNumbers, secondaryContactIds } =
-                existingContacts.reduce(
-                    (acc, existingContact) => {
-                        if (existingContact.linkedId != null)
-                            acc.secondaryContactIds.add(existingContact.id);
-                        if (existingContact.phoneNumber != null)
-                            acc.existingPhoneNumbers.add(existingContact.phoneNumber);
-                        if (existingContact.email != null)
-                            acc.existingEmails.add(existingContact.email);
-                        return acc;
-                    },
-                    {
-                        existingEmails: new Set<string>(),
-                        existingPhoneNumbers: new Set<string>(),
-                        secondaryContactIds: new Set<number>(),
-                    }
-                );
-
-            return {
-                primaryContactId: primaryContact.id,
-                emails: Array.from(existingEmails),
-                phoneNumbers: Array.from(existingPhoneNumbers),
-                secondaryContactIds: Array.from(secondaryContactIds)
-            }
+    const linkedContacts: Contact[] = await findLinkedContacts(email, phoneNumber)
+    if (linkedContacts.length < 1) {
+        const newContact = await db.createNewContact(email, phoneNumber, null)
+        return {
+            id: newContact.id,
+            emails: [newContact.email],
+            phoneNumbers: [newContact.phoneNumber],
+            secondaryContactIds: [],
+            message: "New Contact - Primary"
         }
     }
-    else {
-        return createContact(email, phoneNumber)
+
+    // case 2: New Secondary Creation
+    // condition: no duplicate, some linked maybe be there
+    // additional requirement to update primary in case multiple primary
+    // const duplicateContact: Contact | null = await db.getDuplicateContact(email, phoneNumber)
+    // if (!isDuplicate) {
+    const primaryContact = await db.findAndUpdatePrimaryContact(email, phoneNumber)
+    const newContact = await db.createNewContact(email, phoneNumber, primaryContact.id)
+    const linkedContactsToPrimary = await db.findLinkedContactsToPrimary(primaryContact.id)
+
+    const linkedEmails = [...new Set(linkedContactsToPrimary.map(contact => contact.email).filter(email => email !== null))];
+    const linkedPhoneNumbers = [...new Set(linkedContactsToPrimary.map(contact => contact.phoneNumber).filter(phoneNumber => phoneNumber !== null))];
+    const linkedSecondaryContactIds = Array.from(linkedContactsToPrimary.reduce((ids, contact) => {
+        if (contact.id !== primaryContact.id) {
+            ids.add(contact.id);
+        }
+        return ids;
+    }, new Set<number>()));
+
+    return {
+        id: newContact.id,
+        primaryContact: primaryContact.id,
+        emails: linkedEmails,
+        phoneNumbers: linkedPhoneNumbers,
+        secondaryContactIds: linkedSecondaryContactIds,
+        // message: duplicateContact == null ? "New Contact - Secondary" : "Existing contact - Secondary"
     }
+    // }
+
+    return { message: "WIP" }
+
 }
 
 export const createContact = async (email: string, phoneNumber: string) => {
@@ -137,6 +147,14 @@ const findLinkedContacts = async (email: string, phoneNumber: string) => {
                 { email: email },
                 { phoneNumber: phoneNumber }
             ]
+        }
+    });
+};
+
+const findContactsWithPrimary = async (primaryContactId: number) => {
+    return await prisma.contact.findMany({
+        where: {
+            linkedId: primaryContactId
         }
     });
 };
