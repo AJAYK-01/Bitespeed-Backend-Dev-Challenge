@@ -2,7 +2,7 @@ import { Contact, PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-export const getContactById = async (id: number) => {
+const getContactById = async (id: number) => {
     const contact = await prisma.contact.findFirst({
         where: {
             id: id
@@ -13,6 +13,7 @@ export const getContactById = async (id: number) => {
     else return contact
 }
 
+// creates new contact only if it does not exist, will not update any existing data
 export const createNewContact = async (email: string, phoneNumber: string, primaryContactId: number | null) => {
     const duplicateContact: Contact | null = await getDuplicateContact(email, phoneNumber)
     if (duplicateContact) {
@@ -39,6 +40,22 @@ export const getDuplicateContact = async (email: string, phoneNumber: string) =>
     });
 }
 
+const getPrimaryContact = async (email: string, phoneNumber: string) => {
+    const firstLink = await prisma.contact.findFirst({
+        where: {
+            OR: [
+                { email: email },
+                { phoneNumber: phoneNumber }
+            ]
+        }
+    });
+    if (firstLink != null)
+        return await getContactById(firstLink.linkedId ?? firstLink.id)
+
+}
+
+// creates new primary contact if no links
+// combines multiple primary contacts into one primary and other secondary
 export const findAndUpdatePrimaryContact = async (email: string, phoneNumber: string) => {
     const duplicateContact: Contact | null = await getDuplicateContact(email, phoneNumber)
     if (duplicateContact != null) {
@@ -46,22 +63,10 @@ export const findAndUpdatePrimaryContact = async (email: string, phoneNumber: st
         else return duplicateContact
     }
 
-    const primaryContact: Contact | null = await prisma.contact.findFirst({
-        where: {
-            AND: [
-                { linkPrecedence: 'primary' },
-                {
-                    OR: [
-                        { email: email },
-                        { phoneNumber: phoneNumber }
-                    ]
-                }
-            ]
-        }
-    })
+    const primaryContact = await getPrimaryContact(email, phoneNumber)
 
-    if (primaryContact == null) {
-        throw ("No primary contacts found")
+    if (!primaryContact) {
+        return await createNewContact(email, phoneNumber, null)
     }
 
     await prisma.contact.updateMany({

@@ -14,17 +14,18 @@ export const identifyContact = async (email: string, phoneNumber: string) => {
     // case 1: New Primary Creation
     // condition: no duplicate contact, no linked contact
 
-    const linkedContacts: Contact[] = await findLinkedContacts(email, phoneNumber)
-    if (linkedContacts.length < 1) {
-        const newContact = await db.createNewContact(email, phoneNumber, null)
-        return {
-            id: newContact.id,
-            emails: [newContact.email],
-            phoneNumbers: [newContact.phoneNumber],
-            secondaryContactIds: [],
-            message: "New Contact - Primary"
-        }
-    }
+    // const duplicateContact = db.getDuplicateContact(email, phoneNumber)
+    // const linkedContacts: Contact[] = await findLinkedContacts(email, phoneNumber)
+    // if (duplicateContact) {
+    //     const newContact = await db.createNewContact(email, phoneNumber, null)
+    //     return {
+    //         id: newContact.id,
+    //         emails: [newContact.email],
+    //         phoneNumbers: [newContact.phoneNumber],
+    //         secondaryContactIds: [],
+    //         message: "New Contact - Primary"
+    //     }
+    // }
 
     // case 2: New Secondary Creation
     // condition: no duplicate, some linked maybe be there
