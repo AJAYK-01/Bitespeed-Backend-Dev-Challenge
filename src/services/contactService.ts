@@ -11,27 +11,11 @@ export const deleteAllContacts = async () => {
 };
 
 export const identifyContact = async (email: string, phoneNumber: string) => {
-    // case 1: New Primary Creation
-    // condition: no duplicate contact, no linked contact
 
-    // const duplicateContact = db.getDuplicateContact(email, phoneNumber)
-    // const linkedContacts: Contact[] = await findLinkedContacts(email, phoneNumber)
-    // if (duplicateContact) {
-    //     const newContact = await db.createNewContact(email, phoneNumber, null)
-    //     return {
-    //         id: newContact.id,
-    //         emails: [newContact.email],
-    //         phoneNumbers: [newContact.phoneNumber],
-    //         secondaryContactIds: [],
-    //         message: "New Contact - Primary"
-    //     }
-    // }
+    if (email == null && phoneNumber == null) {
+        throw ("Both email and phoneNumber are null")
+    }
 
-    // case 2: New Secondary Creation
-    // condition: no duplicate, some linked maybe be there
-    // additional requirement to update primary in case multiple primary
-    // const duplicateContact: Contact | null = await db.getDuplicateContact(email, phoneNumber)
-    // if (!isDuplicate) {
     const primaryContact = await db.findAndUpdatePrimaryContact(email, phoneNumber)
     const newContact = await db.createNewContact(email, phoneNumber, primaryContact.id)
     const linkedContactsToPrimary = await db.findLinkedContactsToPrimary(primaryContact.id)
@@ -51,12 +35,7 @@ export const identifyContact = async (email: string, phoneNumber: string) => {
         emails: linkedEmails,
         phoneNumbers: linkedPhoneNumbers,
         secondaryContactIds: linkedSecondaryContactIds,
-        // message: duplicateContact == null ? "New Contact - Secondary" : "Existing contact - Secondary"
     }
-    // }
-
-    return { message: "WIP" }
-
 }
 
 export const createContact = async (email: string, phoneNumber: string) => {

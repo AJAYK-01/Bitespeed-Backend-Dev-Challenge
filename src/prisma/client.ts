@@ -15,10 +15,16 @@ const getContactById = async (id: number) => {
 
 // creates new contact only if it does not exist, will not update any existing data
 export const createNewContact = async (email: string, phoneNumber: string, primaryContactId: number | null) => {
-    const duplicateContact: Contact | null = await getDuplicateContact(email, phoneNumber)
+    const duplicateContact = await getDuplicateContact(email, phoneNumber)
     if (duplicateContact) {
         return duplicateContact
     }
+
+    const duplicateContactForNulls = await getDuplicateContactForNulls(email, phoneNumber)
+    if (duplicateContactForNulls) {
+        return duplicateContactForNulls
+    }
+
     return await prisma.contact.create({
         data: {
             email: email,
@@ -38,6 +44,19 @@ export const getDuplicateContact = async (email: string, phoneNumber: string) =>
             ]
         }
     });
+}
+
+const getDuplicateContactForNulls = async (email: string, phoneNumber: string) => {
+    const emailContact: Contact | null = await await prisma.contact.findFirst({
+        where: { email: email }
+    });
+    const phoneContact: Contact | null = await prisma.contact.findFirst({
+        where: { phoneNumber: phoneNumber }
+    });
+
+    if ((email == null || emailContact) && (phoneNumber == null || phoneContact)) {
+        return emailContact
+    }
 }
 
 const getPrimaryContact = async (email: string, phoneNumber: string) => {
