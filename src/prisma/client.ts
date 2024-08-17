@@ -115,7 +115,7 @@ const getDuplicateContact = async (email: string, phoneNumber: string) => {
 }
 
 const getDuplicateContactForNulls = async (email: string, phoneNumber: string) => {
-    const emailContact: Contact | null = await await prisma.contact.findFirst({
+    const emailContact: Contact | null = await prisma.contact.findFirst({
         where: { email: email }
     });
     const phoneContact: Contact | null = await prisma.contact.findFirst({
@@ -123,7 +123,7 @@ const getDuplicateContactForNulls = async (email: string, phoneNumber: string) =
     });
 
     if ((email == null || emailContact) && (phoneNumber == null || phoneContact)) {
-        return emailContact
+        return emailContact ?? phoneContact
     }
 }
 
