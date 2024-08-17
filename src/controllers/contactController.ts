@@ -20,17 +20,6 @@ export const deleteContacts = async (_: Request, res: Response) => {
     }
 };
 
-export const createContact = async (req: Request, res: Response) => {
-    const { email, phoneNumber } = req.body;
-
-    try {
-        const newContact = await contactService.createContact(email, phoneNumber);
-        res.status(201).json({ contact: newContact });
-    } catch (error) {
-        createErrorResponse(res, error, 'Error creating new contact');
-    }
-};
-
 export const identifyContact = async (req: Request, res: Response) => {
     const { email, phoneNumber } = req.body;
 
