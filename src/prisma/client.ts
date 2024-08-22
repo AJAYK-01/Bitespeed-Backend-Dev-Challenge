@@ -59,19 +59,51 @@ export const findAndUpdatePrimaryContact = async (email: string, phoneNumber: st
         return await createNewContact(email, phoneNumber, null)
     }
 
-    await prisma.contact.updateMany({
-        data: {
-            linkPrecedence: 'secondary',
-            linkedId: primaryContact.id
+    const primaryContactsToUpdate: number[] = (await prisma.contact.findMany({
+        distinct: ['linkedId'],
+        select: {
+            linkedId: true,
         },
         where: {
             AND: [
+                { linkedId: { not: null } },
                 { id: { not: primaryContact.id } },
                 {
                     OR: [
                         { email: email },
                         { phoneNumber: phoneNumber }
                     ]
+                }
+            ]
+        }
+    })).map(contact => contact.linkedId) as number[];
+
+    await prisma.contact.updateMany({
+        data: {
+            linkPrecedence: 'secondary',
+            linkedId: primaryContact.id
+        },
+        where: {
+            OR: [
+                // Case 1: direct links
+                {
+                    AND: [
+                        { id: { not: primaryContact.id } },
+                        {
+                            OR: [
+                                { email: email },
+                                { phoneNumber: phoneNumber }
+                            ]
+                        }
+                    ]
+                },
+                // Case 2: Affected primary's of direct links
+                {
+                    id: { in: primaryContactsToUpdate }
+                },
+                // Case 3: Affected secondary's of primary's
+                {
+                    linkedId: { in: primaryContactsToUpdate }
                 }
             ]
         }

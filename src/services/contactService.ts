@@ -28,8 +28,7 @@ export const identifyContact = async (email: string, phoneNumber: string) => {
     }, new Set<number>()));
 
     return {
-        id: newContact.id,
-        primaryContact: primaryContact.id,
+        primaryContactId: primaryContact.id,
         emails: linkedEmails,
         phoneNumbers: linkedPhoneNumbers,
         secondaryContactIds: linkedSecondaryContactIds,
